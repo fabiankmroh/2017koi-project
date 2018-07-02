@@ -29,6 +29,11 @@ int soundDetectedVal = HIGH;
 boolean bAlarm = false;
 unsigned long lastSoundDetectTime; int soundAlarmTime = 500;
 
+// For timer setup
+unsigned long counter = 0;
+unsigned long total_sum = 0 ; 
+unsigned long current_time, last_time;
+
 // Gyro Sensor
 const int MPU=0x68;  
 int16_t GyX,GyY,GyZ;
@@ -41,8 +46,6 @@ void setup() {
   dht.begin();
 
   sensor_t sensor;
-
-  
 
   // Set delay between sensor readings based on sensor details.
   delayMS = sensor.min_delay / 1000;
@@ -57,45 +60,13 @@ void setup() {
   Wire.write(0);     //MPU-6050 시작 모드로
   Wire.endTransmission(true);
 
+  last_time = millis();
 }
 
-void loop()
+int getGyroValue()
 {
- 
-  // Photoresistor
-  int sensorReading = analogRead(A0);
-  Serial.print(sensorReading);
-  Serial.print(", ");
+  int weighted_sum;
 
-  // Temp Sensor
-
-
-  sensors_event_t event;
-
-  // Temperature Output
-  dht.temperature().getEvent(&event);
-  
-  Serial.print(event.temperature);
-  Serial.print(", ");
-
-
-
-  // Humidity Output
-
-  dht.humidity().getEvent(&event);
-
-  Serial.print(event.relative_humidity);
-  Serial.print(", ");
-
-
-  // Sound Sensor
-
-
-  soundDetectedVal = digitalRead(soundDetectedPin) ; //소리 값을 읽어서 저장
-  Serial.print(soundDetectedVal);
-  Serial.print(", ");
-
-  // Gyro Sensor
   Wire.beginTransmission(MPU);    //데이터 전송시작
   Wire.write(0x3B);               // register 0x3B (ACCEL_XOUT_H), 큐에 데이터 기록
   Wire.endTransmission(false);    //연결유지
@@ -111,16 +82,78 @@ void loop()
   
   //시리얼 모니터에 출력
   //Serial.print("sqrt(GyX^2 + Gy^2 + Gz^2) = "); 
-  Serial.print(sqrt(pow(GyX, 2) + pow(GyY, 2) + pow(GyZ, 2)));
+  weighted_sum = sqrt(pow(GyX, 2) + pow(GyY, 2) + pow(GyZ, 2));
   Wire.beginTransmission(MPU);    //데이터 전송시작
   Wire.write(0x3B);               // register 0x3B (ACCEL_XOUT_H), 큐에 데이터 기록
   Wire.endTransmission(false);    //연결유지
   Wire.requestFrom(MPU,14,true);  //MPU에 데이터 요청
-  
-  Serial.println();
-  
-  delay(1000);
 
+  return(weighted_sum);
+}
+
+void loop()
+{
+
+  // Sound Sensor
+  soundDetectedVal = digitalRead(soundDetectedPin) ; //소리 값을 읽어서 저장
+  counter++;
+  total_sum += soundDetectedVal;
+  if (soundDetectedVal == LOW) { // 소리가 들리면
+    lastSoundDetectTime = millis(); // 소리가 들린시간 기록
+    if (!bAlarm) {
+      bAlarm = true;
+    }
+  } else {
+    if ( (millis() - lastSoundDetectTime) > soundAlarmTime && bAlarm) {
+      bAlarm = false;
+    }
+  }
+
+  current_time = millis();
+  if( current_time - last_time > 1000 ){ // Operations done under 1 sec are placed
+    
+        // photo register value 
+         int sensorReading = analogRead(A0);
+         Serial.print(sensorReading);
+         Serial.print(", ");
+
+          // Temp Sensor
+  
+         sensors_event_t event;
+  
+         // Temperature Output
+         dht.temperature().getEvent(&event);
+
+          Serial.print(event.temperature);
+         Serial.print(", ");
+
+         // Humidity Output
+
+          dht.humidity().getEvent(&event);
+
+           Serial.print(event.relative_humidity);
+          Serial.print(", ");
+
+          // Sound sensor output
+          int average = total_sum / counter;
+          if(average  > 0){
+            average = 1;
+          }
+          Serial.print(average );
+          total_sum = 0 ;
+          counter = 0;
+          Serial.print(", ");
+
+          // Gyro Sensor
+          Serial.print(getGyroValue());
+  
+          Serial.println();
+
+          // timer reset
+          last_time = current_time;
+
+    }
+  
 }
 
 
