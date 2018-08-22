@@ -15,6 +15,8 @@
 const int sensorMin = 0;
 const int sensorMax = 845;
 
+int Analog_Eingang = A1;
+
 // Temp Sensor (Libraries Included at the Top)
 
 #define DHTPIN   3
@@ -51,7 +53,11 @@ void setup() {
   delayMS = sensor.min_delay / 1000;
 
   // Sound Sensor
-  pinMode(soundDetectedPin, INPUT) ;
+  pinMode (Analog_Eingang, INPUT);
+       
+  Serial.begin (9600);pinMode (Analog_Eingang, INPUT);
+       
+  Serial.begin (9600);
   
   // Gyro Sensor
   Wire.begin();      //Wire 라이브러리 초기화
@@ -93,21 +99,11 @@ int getGyroValue()
 
 void loop()
 {
-
+  float Analog;
   // Sound Sensor
-  soundDetectedVal = digitalRead(soundDetectedPin) ; //소리 값을 읽어서 저장
-  counter++;
-  total_sum += soundDetectedVal;
-  if (soundDetectedVal == LOW) { // 소리가 들리면
-    lastSoundDetectTime = millis(); // 소리가 들린시간 기록
-    if (!bAlarm) {
-      bAlarm = true;
-    }
-  } else {
-    if ( (millis() - lastSoundDetectTime) > soundAlarmTime && bAlarm) {
-      bAlarm = false;
-    }
-  }
+
+ 
+
 
   current_time = millis();
   if( current_time - last_time > 1000 ){ // Operations done under 1 sec are placed
@@ -134,14 +130,8 @@ void loop()
            Serial.print(event.relative_humidity);
           Serial.print(", ");
 
-          // Sound sensor output
-          int average = total_sum / counter;
-          if(average  > 0){
-            average = 1;
-          }
-          Serial.print(average );
-          total_sum = 0 ;
-          counter = 0;
+          Analog = analogRead (Analog_Eingang); 
+          Serial.print(abs(Analog));
           Serial.print(", ");
 
           // Gyro Sensor
@@ -153,7 +143,7 @@ void loop()
           last_time = current_time;
 
     }
-  
+    delay(1000);
 }
 
 
